@@ -1,25 +1,64 @@
-name: Run Tests
+```yaml
+name: Docker CI/CD Practice
 
 on:
+  push:
+    branches:
+      - main
+
   pull_request:
-    types: [opened, synchronize, reopened]
+    branches:
+      - main
 
 jobs:
-  test:
+  build-and-run:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
+      # 1. Get code from GitHub
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # 2. Install Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
 
-      - name: Install dependencies
+      # 3. Install dependencies
+      - name: Install Dependencies
         run: npm ci
 
-      - name: Run tests
-        run: npm test
+      # 4. Run tests
+      - name: Run Tests
+        run: npm test --if-present
+
+      # 5. Build Docker image
+      - name: Build Docker Image
+        run: docker build -t my-node-app .
+
+      # 6. Run application inside Docker
+      - name: Run Docker Container
+        run: |
+          docker run -d \
+            --name my-node-app \
+            -p 3000:3000 \
+            my-node-app
+
+      # 7. Check running container
+      - name: Check Container
+        run: docker ps
+
+      # 8. Check application
+      - name: Test Application
+        run: |
+          sleep 5
+          curl http://localhost:3000
+
+      # 9. Show container logs if needed
+      - name: Container Logs
+        if: always()
+        run: docker logs my-node-app
+```
