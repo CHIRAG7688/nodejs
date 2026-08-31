@@ -50,4 +50,4 @@ jobs:
 
       - name: Container Logs
         if: always()
-        run: docker logs my-node-apps
+        run: docker logs my-node-app
