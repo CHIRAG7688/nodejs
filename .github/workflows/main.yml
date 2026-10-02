@@ -1,4 +1,5 @@
-name: Docker CI/CD Practice
+
+name: WhatsApp Clone CI/CD
 
 on:
   push:
@@ -9,48 +10,93 @@ on:
     branches:
       - main
 
+
 jobs:
-  build-and-run:
+
+  # ==========================================
+  # CI - Frontend
+  # ==========================================
+  frontend:
+    name: Frontend CI
     runs-on: ubuntu-latest
 
     steps:
-
-      - name: Checkout Code
+      - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: 18
           cache: npm
 
-      - name: Install Dependencies
+      - name: Install frontend dependencies
         run: npm ci
 
-      - name: Run Tests
-        run: npm test -- --watch=false --passWithNoTests --forceExit
+      - name: Build frontend
+        run: npm run build
 
-      - name: Build Docker Image
-        run: docker build -t my-node-app .
 
-      - name: Run Docker Container
+  # ==========================================
+  # CI - Backend
+  # ==========================================
+  backend:
+    name: Backend CI
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm ci
+
+      # Backend currently has no real test script.
+      # Add tests here later.
+      - name: Check backend
+        working-directory: backend
+        run: node --check index.js
+
+
+  # ==========================================
+  # CD - Docker
+  # ==========================================
+  docker:
+    name: Build and Push Docker Image
+    needs:
+      - frontend
+      - backend
+
+    runs-on: ubuntu-latest
+
+    # Docker image is pushed only from main
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build Docker image
         run: |
-          docker run -d \
-            --name my-node-app \
-            -p 3000:3000 \
-            my-node-app
+          docker build \
+            -t ${{ secrets.DOCKER_USERNAME }}/whatsapp-clone:latest \
+            .
 
-      - name: Check Container
-        run: docker ps
-
-      - name: Test Application
+      - name: Push Docker image
         run: |
-          sleep 5
-          curl http://localhost:3000
-
-      - name: Container Logs
-        if: always()
-        run: docker logs my-node-app
-
-
-      # Cleanup
+          docker push ${{ secrets.DOCKER_USERNAME }}/whatsapp-clone:latest
+```
